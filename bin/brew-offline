@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+function die {
+    echo "Fatal: ${*}"
+    exit 1
+}
+
+function on_exit {
+    cd /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/ \
+        || die "Couldn't cd to homebrew-core, nonstandard tap location?"
+    git checkout HEAD || die "Couldn't checkout HEAD, you'll probably need to fix this manually!"
+}
+
+trap on_exit EXIT
+
+cat <<BANNER
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+You're using \`brew' in offline mode.
+
+Some pointers:
+
+1. Do not try to install anything but stable specs
+2. Run every command through \`brew offline', e.g.
+    \`brew offline install gcc'
+3. Do not try to do anything funky with Homebrew's
+caches or prefixes.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+BANNER
+
+BREW_OFFLINE_CONFIG="${HOME}/.offlinebrew"
+
+BREW_OFFLINE_COMMIT="${BREW_OFFLINE_CONFIG}/commit"
+BREW_OFFLINE_STAMP="${BREW_OFFLINE_CONFIG}/stamp"
+BREW_OFFLINE_CACHE="${BREW_OFFLINE_CONFIG}/cache"
+
+[[ -f "${BREW_OFFLINE_COMMIT}" ]] || die "Missing file: ${BREW_OFFLINE_COMMIT}"
+[[ -f "${BREW_OFFLINE_STAMP}" ]] || die "Missing file: ${BREW_OFFLINE_STAMP}"
+
+commit=$(<"${BREW_OFFLINE_COMMIT}")
+stamp=$(<"${BREW_OFFLINE_STAMP}")
+cache=$(<"${BREW_OFFLINE_CACHE}")
+
+# Check the general sanity of our config files.
+[[ -n "${commit}" ]] || die "No commit hash in ${BREW_OFFLINE_COMMIT}!"
+[[ -n "${stamp}" ]] || die "No timestamp in ${BREW_OFFLINE_STAMP}!"
+[[ -d "${cache}" ]] || die "Specified cache: ${cache} is not a directory."
+
+# Check the timestamp, aborting if the user's cache is over a week old.
+# This is to minimize the (unlikely) case where Homebrew/brew changes the formula
+# DSL in a way that breaks our cache.
+current=$(date +%s)
+diff=$(( current - stamp ))
+
+if [[ "${diff}" -ge 604800 ]]; then
+    die "The cached packages in ${BREW_OFFLINE_CACHE} are over a week old; rebuild your cache."
+fi
+
+# Prevent Homebrew from auto-updating and clobbering our checked-out state.
+export HOMEBREW_NO_AUTO_UPDATE=1
+
+# Force source builds, since we're not currently providing bottles.
+export HOMEBREW_BUILD_FROM_SOURCE=1
+
+# Redirect Homebrew's cache to our cache.
+export HOMEBREW_CACHE="${cache}"
+
+(
+    cd /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/ \
+        || die "Couldn't cd to homebrew-core, nonstandard tap location?"
+    git checkout "${commit}" || die "Couldn't checkout ${commit}!"
+)
+
+# The rest is just a normal brew invocation.
+# We don't attempt to filter commands that'll do network activity,
+# since we warn the user above to stick to supported actions.
+brew "${@}"
+

@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# dump_formulae: given a Homebrew installation, dumps a JSON
+# representation of all available packages.
+
+require "optparse"
+require "json"
+
+# We need Homebrew's libraries.
+abort "Make sure to run me via `brew ruby`!" unless Object.const_defined? :Homebrew
+
+BREW_OFFLINE_CONFIG = File.expand_path "~/.offlinebrew"
+
+Dir.mkdir BREW_OFFLINE_CONFIG unless Dir.exist?(BREW_OFFLINE_CONFIG)
+
+BREW_OFFLINE_COMMIT = File.join BREW_OFFLINE_CONFIG, "commit"
+BREW_OFFLINE_STAMP = File.join BREW_OFFLINE_CONFIG, "stamp"
+BREW_OFFLINE_CACHE = File.join BREW_OFFLINE_CONFIG, "cache"
+
+options = {
+  directory: "/Users/william/mnt/nessie",
+  sleep: 0.5,
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: brew ruby dump_formulae [options]"
+
+  parser.on "-d", "--directory DIRECTORY" do |d|
+    options[:directory] = d
+  end
+
+  parser.on "-s", "--sleep SECS", Float, "sleep between each formula download" do |s|
+    options[:sleep] = s
+  end
+end.parse!
+
+unless Dir.exist?(options[:directory])
+  abort "Fatal: the output directory must exist"
+end
+
+HOMEBREW_CACHE = Pathname.new(options[:directory])
+
+# Dump the homebrew-core commit we're dumping at, the timestamp,
+# and the path of our cache to the directory that brew-offline reads.
+ohai "Writing brew-offline config..."
+
+commit = begin
+  core_dir = File.join HOMEBREW_LIBRARY, "Taps/homebrew/homebrew-core"
+  Dir.chdir core_dir do
+    `git rev-parse HEAD`.chomp
+  end
+end
+
+File.write(BREW_OFFLINE_COMMIT, commit)
+File.write(BREW_OFFLINE_STAMP, Time.now.to_i.to_s)
+File.write(BREW_OFFLINE_CACHE, options[:directory])
+
+# Finally, fetch the (stable) resources for each formula in homebrew-core.
+Formula.each do |formula|
+  # Skip formulae that aren't in the core tap.
+  next unless formula.tap.core_tap?
+
+  ohai "Downloading #{formula.name}..."
+
+  # First, download the source package.
+  formula.stable.fetch
+
+  # Then, download the resources, if any.
+  formula.stable.resources.each do |_name, res|
+    res.fetch
+  end
+
+  # Then, download the (external) patches, if any.
+  formula.stable.patches.each do |patch|
+    patch.fetch if patch.external?
+  end
+
+  sleep options[:sleep]
+end
+
