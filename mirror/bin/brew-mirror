@@ -1,0 +1,139 @@
+#!/usr/bin/env brew ruby
+# frozen_string_literal: true
+
+# dump_formulae: given a Homebrew installation, dumps a JSON
+# representation of all available packages.
+
+require "optparse"
+require "json"
+
+# We need Homebrew's libraries.
+abort "Make sure to run me via `brew ruby`!" unless Object.const_defined? :Homebrew
+
+MirrorResource = Struct.new(:fetchable, :checksum, :downloader, :url)
+
+# TODO(ww): These are the simplest to support, and cover 99.9% of formulae.
+# In the future, we can add support for other strategies by
+# rewriting the strategy used by the resource(s) at runtime.
+BREW_OFFLINE_DOWNLOAD_STRATEGIES = [
+  CurlDownloadStrategy,
+  CurlApacheMirrorDownloadStrategy,
+  NoUnzipCurlDownloadStrategy,
+  # TODO(ww): These don't have a stable checksum; we should use their revision instead.
+  # GitDownloadStrategy,
+  # GitHubGitDownloadStrategy,
+]
+
+BREW_OFFLINE_CONFIG = File.expand_path "~/.offlinebrew"
+
+Dir.mkdir BREW_OFFLINE_CONFIG unless Dir.exist?(BREW_OFFLINE_CONFIG)
+
+BREW_OFFLINE_COMMIT = File.join BREW_OFFLINE_CONFIG, "commit"
+BREW_OFFLINE_STAMP = File.join BREW_OFFLINE_CONFIG, "stamp"
+BREW_OFFLINE_CACHE = File.join BREW_OFFLINE_CONFIG, "cache"
+BREW_OFFLINE_BASEURL = File.join BREW_OFFLINE_CONFIG, "baseurl"
+BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_CONFIG, "urlmap.json"
+
+options = {
+  directory: "/Users/william/mnt/nessie/brew-mirror",
+  baseurl: "http://localhost:8000",
+  sleep: 0.5,
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: brew ruby brew-mirror [options]"
+
+  parser.on "-d", "--directory DIRECTORY" do |d|
+    options[:directory] = d
+  end
+
+  parser.on "-s", "--sleep SECS", Float, "sleep between each formula download" do |s|
+    options[:sleep] = s
+  end
+end.parse!
+
+unless Dir.exist?(options[:directory])
+  abort "Fatal: the output directory must exist"
+end
+
+# Dump the homebrew-core commit we're dumping at, the timestamp,
+# and the path of our cache to the directory that brew-offline reads.
+ohai "Writing brew-offline config..."
+
+commit = begin
+  core_dir = File.join HOMEBREW_LIBRARY, "Taps/homebrew/homebrew-core"
+  Dir.chdir core_dir do
+    `git rev-parse HEAD`.chomp
+  end
+end
+
+File.write(BREW_OFFLINE_COMMIT, commit)
+File.write(BREW_OFFLINE_STAMP, Time.now.to_i.to_s)
+File.write(BREW_OFFLINE_CACHE, options[:directory])
+File.write(BREW_OFFLINE_BASEURL, options[:baseurl])
+
+url_map = {}
+
+# Finally, fetch the (stable) resources for each formula in homebrew-core.
+Formula.each do |formula|
+  # Skip formulae that aren't in the core tap.
+  next unless formula.tap.core_tap?
+
+  ohai "Collecting resources for #{formula.name}..."
+
+  # Build up a list of MirrorResources for the formula.
+  resources = []
+
+  resources << MirrorResource.new(formula.stable,
+                                  formula.stable.checksum.to_s,
+                                  formula.stable.downloader,
+                                  formula.stable.url)
+
+  formula.stable.resources.each do |_name, res|
+    resources << MirrorResource.new(res, res.checksum.to_s, res.downloader, res.url)
+  end
+
+  formula.stable.patches.select(&:external?).each do |patch|
+    resources << MirrorResource.new(patch, patch.resource.checksum.to_s,
+                                    patch.resource.downloader, patch.url)
+  end
+
+  # Make sure every resource in the formula is retrievable via one of the
+  # download strategies supported by our mirror, skipping (and logging) the formula
+  # if one or more isn't.
+  bad_resources = resources.select do |res|
+    !BREW_OFFLINE_DOWNLOAD_STRATEGIES.include? (res.downloader.class)
+  end
+
+  if bad_resources.any?
+    bad_resources.each do |res|
+      opoo "#{formula.name} has an unmirrorable resource: #{res.url} (#{res.downloader.class})"
+    end
+    next
+  end
+
+  ohai "Downloading resources for #{formula.name}..."
+
+  resources.each do |res|
+    # We'll do the logging here.
+    res.downloader.shutup!
+    res.downloader.fetch unless res.downloader.cached_location.file?
+
+    old_location = res.downloader.cached_location
+    new_location = Pathname.new(File.join(options[:directory], "#{res.checksum}#{old_location.extname}"))
+
+    if new_location.file?
+      ohai "Already migrated!"
+    else
+      FileUtils.mv res.downloader.cached_location.to_s, new_location.to_s
+      ohai "\t#{res.downloader.cached_location} -> #{new_location}"
+    end
+
+    # Add to the urlmap regardless.
+    url_map[res.url] = new_location
+  end
+
+  sleep options[:sleep]
+end
+
+File.write(BREW_OFFLINE_URLMAP, url_map.to_json)
