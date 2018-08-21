@@ -1,6 +1,14 @@
 #!/usr/bin/env ruby
 # frozen_string_literal true
 
+CORE_TAP_DIR = "/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/"
+
+at_exit do
+  Dir.chdir CORE_TAP_DIR do
+    `git checkout HEAD`
+  end
+end
+
 # We're doing a lot of fiddling below, so we want Homebrew to be as loud
 # as possible about everything it does.
 ENV["HOMEBREW_VERBOSE"] = "1"
@@ -55,4 +63,9 @@ end
 # in the ARGV may help us trace where things go wrong.
 ARGV << "--build-from-source"
 
-exec "brew", "install", *ARGV
+Dir.chdir CORE_TAP_DIR do
+  commit = File.read BREW_OFFLINE_COMMIT
+  `git checkout #{commit}`
+end
+
+system "brew", "install", *ARGV
