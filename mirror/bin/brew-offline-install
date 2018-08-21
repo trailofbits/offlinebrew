@@ -63,6 +63,13 @@ end
 # in the ARGV may help us trace where things go wrong.
 ARGV << "--build-from-source"
 
+# Nuke Homebrew's cache. We don't want to assume that our mirroring server
+# supports resumeable downloads or `git fetch`.
+system "brew", "cleanup", "-s", "--prune=0"
+
+# Reset homebrew/homebrew-core to the commit that we mirrored the package
+# tree at. This prevents us from attempting to install either earlier or later
+# versions of packages/resources than we have mirrored.
 Dir.chdir CORE_TAP_DIR do
   commit = File.read BREW_OFFLINE_COMMIT
   `git checkout #{commit}`
