@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
 # brew-offline-git: Shims HOMEBREW_GIT to provide transparent URL redirection.
 
@@ -16,7 +17,7 @@ BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 begin
   config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
   urlmap = JSON.parse File.read(BREW_OFFLINE_URLMAP)
-rescue => e
+rescue RuntimeError => e
   STDERR.puts "Fatal: Couldn't read config or urlmap?"
   raise e
 end

@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# frozen_string_literal true
+# frozen_string_literal: true
 
 require "json"
 
@@ -59,9 +59,7 @@ INVALID_FLAGS = %w[
 
 invalid_flags = ARGV & INVALID_FLAGS
 
-if invalid_flags.any?
-  odie "One or more invalid flags passed: #{invalid_flags.join(", ")}"
-end
+odie "One or more invalid flags passed: #{invalid_flags.join(", ")}" if invalid_flags.any?
 
 # This shouldn't be necessary thanks to HOMEBREW_BUILD_FROM_SOURCE, but putting
 # in the ARGV may help us trace where things go wrong.
