@@ -6,22 +6,23 @@
 
 require "optparse"
 require "json"
+require "securerandom"
 
 # We need Homebrew's libraries.
 abort "Make sure to run me via `brew ruby`!" unless Object.const_defined? :Homebrew
 
-MirrorResource = Struct.new(:fetchable, :checksum, :downloader, :url)
+MirrorResource = Struct.new(:fetchable, :identifier, :downloader, :url)
 
-# TODO(ww): These are the simplest to support, and cover 99.9% of formulae.
-# In the future, we can add support for other strategies by
-# rewriting the strategy used by the resource(s) at runtime.
+# These are the simplest to support, and cover 99.9% of formulae.
+# Notable exception: clang-format, which is in a SVN repo.
 BREW_OFFLINE_DOWNLOAD_STRATEGIES = [
   CurlDownloadStrategy,
   CurlApacheMirrorDownloadStrategy,
   NoUnzipCurlDownloadStrategy,
-  # TODO(ww): These don't have a stable checksum; we should use their revision instead.
-  # GitDownloadStrategy,
-  # GitHubGitDownloadStrategy,
+  # NOTE: These don't have a stable checksum, so we fabricate an identifier for them.
+  # See `sensible_identifier`.
+  GitDownloadStrategy,
+  GitHubGitDownloadStrategy,
 ]
 
 BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
@@ -30,6 +31,19 @@ Dir.mkdir BREW_OFFLINE_DIR unless Dir.exist?(BREW_OFFLINE_DIR)
 
 BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
 BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
+
+# Given a fetchable, produce a sensible and probably unique identifier.
+def sensible_identifier(ds, checksum = nil)
+  case ds
+  when GitDownloadStrategy, GitHubGitDownloadStrategy
+    # Git/GitHub resources don't have checksums and Homebrew doesn't make it easy
+    # to retrieve their revision/last commit hash, so we just create a unique
+    # identifier for them.
+    SecureRandom.uuid
+  else
+    checksum.to_s
+  end
+end
 
 options = {
   directory: "/Users/william/mnt/nessie/brew-mirror",
@@ -93,17 +107,24 @@ Formula.each do |formula|
   resources = []
 
   resources << MirrorResource.new(formula.stable,
-                                  formula.stable.checksum.to_s,
+                                  sensible_identifier(formula.stable.downloader,
+                                                      formula.stable.checksum),
                                   formula.stable.downloader,
                                   formula.stable.url)
 
   formula.stable.resources.each do |_name, res|
-    resources << MirrorResource.new(res, res.checksum.to_s, res.downloader, res.url)
+    resources << MirrorResource.new(res,
+                                    sensible_identifier(res.downloader, res.checksum),
+                                    res.downloader,
+                                    res.url)
   end
 
   formula.stable.patches.select(&:external?).each do |patch|
-    resources << MirrorResource.new(patch, patch.resource.checksum.to_s,
-                                    patch.resource.downloader, patch.url)
+    resources << MirrorResource.new(patch,
+                                    sensible_identifier(patch.resource.downloader,
+                                                        patch.resource.checksum),
+                                    patch.resource.downloader,
+                                    patch.url)
   end
 
   # Make sure every resource in the formula is retrievable via one of the
@@ -125,13 +146,13 @@ Formula.each do |formula|
   resources.each do |res|
     # We'll do the logging here.
     res.downloader.shutup!
-    res.downloader.fetch unless res.downloader.cached_location.file?
 
-    # TODO: Avoid the fetch above entirely if new_location exists.
     old_location = res.downloader.cached_location
-    new_location = Pathname.new(File.join(options[:directory], "#{res.checksum}#{old_location.extname}"))
+    new_location = Pathname.new(File.join(options[:directory], "#{res.identifier}#{old_location.extname}"))
 
-    if new_location.file?
+    res.downloader.fetch unless new_location.exist?
+
+    if new_location.exist?
       ohai "Already migrated!"
     else
       FileUtils.mv res.downloader.cached_location.to_s, new_location.to_s
