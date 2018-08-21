@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# brew-offline-curl-shim: Shims HOMEBREW_CURL to provide transparent URL redirection.
+# brew-offline-curl: Shims HOMEBREW_CURL to provide transparent URL redirection.
 
 require "uri"
 require "json"
