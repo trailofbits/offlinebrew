@@ -3,7 +3,7 @@
 Tools can be found under the [bin/](bin/) directory. All tools run on macOS and require
 a Homebrew installation.
 
-### `brew mirror`
+### `brew-mirror`
 
 `brew-mirror` performs a mirror of all (supported) Homebrew source packages.
 
@@ -26,8 +26,24 @@ You shouldn't (need to) call it directly.
 
 ### `brew-offline-git`
 
-`brew-offline-git` doesn't exist yet, but will be the `git` shim called by `brew-offline-install`
-when making Git repository requests. Like `brew-offline-curl`, it rewrites the requested URL
+`brew-offline-git` is the `git` shim called by `brew-offline-install` when making Git repository
+(i.e. `git clone`) requests. Like `brew-offline-curl`, it rewrites the requested URL
 internally and feeds the rewritten URL to the real `git`.
 
 You shouldn't (need to) call it directly.
+
+## Configuration
+
+`brew-mirror` writes two files to `~/.offlinebrew/`: *config.json* and *urlmap.json*.
+
+*config.json* contains various configuration settings read by `brew-offline-install` and the
+`curl`/`git` shims. You shouldn't need to modify it by hand.
+
+*urlmap.json* contains a mapping of original resource URLs
+(e.g., `https://example.com/foobar-4.0.tar.gz`) to unique identifiers + extensions
+(e.g., `f2c1e86ca0a404ff281631bdc8377638992744b175afb806e25871a24a934e07.tar.gz`). These
+identifiers + extensions are expected to exist under the `baseurl` key in *config.json*.
+
+As an example, if `baseurl` is `http://192.168.1.5:8080`, then *urlmap.json* tells the individual
+shims that `https://example.com/foobar-4.0.tar.gz` is actually
+`http://192.168.1.5:8080/f2c1e86ca0a404ff281631bdc8377638992744b175afb806e25871a24a934e07.tar.gz`.
