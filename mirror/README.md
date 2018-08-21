@@ -43,6 +43,7 @@ You shouldn't (need to) call it directly.
 (e.g., `https://example.com/foobar-4.0.tar.gz`) to unique identifiers + extensions
 (e.g., `f2c1e86ca0a404ff281631bdc8377638992744b175afb806e25871a24a934e07.tar.gz`). These
 identifiers + extensions are expected to exist under the `baseurl` key in *config.json*.
+You shouldn't need to modify it by hand.
 
 As an example, if `baseurl` is `http://192.168.1.5:8080`, then *urlmap.json* tells the individual
 shims that `https://example.com/foobar-4.0.tar.gz` is actually
