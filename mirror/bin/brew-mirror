@@ -130,7 +130,7 @@ Formula.each do |formula|
     end
 
     # Add to the urlmap regardless.
-    url_map[res.url] = new_location
+    url_map[res.url] = new_location.basename
   end
 
   sleep options[:sleep]
