@@ -5,7 +5,7 @@ CORE_TAP_DIR = "/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/"
 
 at_exit do
   Dir.chdir CORE_TAP_DIR do
-    `git checkout HEAD`
+    `git checkout master`
   end
 end
 
