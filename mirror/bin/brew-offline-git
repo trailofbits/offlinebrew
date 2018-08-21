@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+
+# brew-offline-git: Shims HOMEBREW_GIT to provide transparent URL redirection.
+
+require "uri"
+require "json"
+
+def verbose(msg)
+  STDERR.puts "[+] #{msg}" if ENV["HOMEBREW_VERBOSE"]
+end
+
+BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
+BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
+
+begin
+  config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
+  urlmap = JSON.parse File.read(BREW_OFFLINE_URLMAP)
+rescue => e
+  STDERR.puts "Fatal: Couldn't read config or urlmap?"
+  raise e
+end
+
+# We're shimming all `git` calls, not just `clone`s, so allow the
+# non-`clone`s to pass through undisturbed.
+if ARGV.first != "clone"
+  verbose "`git` called, but not `git clone`: #{ARGV.join(" ")}"
+  exec "git", *ARGV
+end
+
+# I don't think Homebrew currently batches `git` calls together, so
+# we should never see more than 1 URL at a time anyways.
+# However, it doesn't hurt to be generic.
+urls = ARGV.select { |arg| URI.regexp(%w[http https git]) =~ arg }
+mirror_urls = urls.map { |url| URI.join(config[:baseurl], File.basename(urlmap[url])) }
+
+urls.zip(mirror_urls).each do |u, m|
+  verbose "#{u} -> #{m}"
+  ARGV[ARGV.index(u)] = m.to_s
+end
+
+exec "git", *ARGV
