@@ -9,11 +9,15 @@ def verbose(msg)
   STDERR.puts "[+] #{msg}" if ENV["HOMEBREW_VERBOSE"]
 end
 
+BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
+BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
+
 begin
-  baseurl = File.read(File.expand_path("~/.offlinebrew/baseurl")).chomp
-  urlmap = JSON.parse File.read(File.expand_path("~/.offlinebrew/urlmap.json"))
+  config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
+  urlmap = JSON.parse File.read(BREW_OFFLINE_URLMAP)
 rescue => e
-  STDERR.puts "Fatal: Couldn't read baseurl or urlmap?"
+  STDERR.puts "Fatal: Couldn't read config or urlmap?"
   raise e
 end
 
@@ -21,7 +25,7 @@ end
 # we should never see more than 1 URL at a time anyways.
 # However, it doesn't hurt to be generic.
 urls = ARGV.select { |arg| URI.regexp(%w[http https]) =~ arg }
-mirror_urls = urls.map { |url| URI.join(baseurl, File.basename(urlmap[url])) }
+mirror_urls = urls.map { |url| URI.join(config[:baseurl], File.basename(urlmap[url])) }
 
 urls.zip(mirror_urls).each do |u, m|
   verbose "#{u} -> #{m}"

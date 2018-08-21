@@ -24,20 +24,18 @@ BREW_OFFLINE_DOWNLOAD_STRATEGIES = [
   # GitHubGitDownloadStrategy,
 ]
 
-BREW_OFFLINE_CONFIG = File.expand_path "~/.offlinebrew"
+BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
 
-Dir.mkdir BREW_OFFLINE_CONFIG unless Dir.exist?(BREW_OFFLINE_CONFIG)
+Dir.mkdir BREW_OFFLINE_DIR unless Dir.exist?(BREW_OFFLINE_DIR)
 
-BREW_OFFLINE_COMMIT = File.join BREW_OFFLINE_CONFIG, "commit"
-BREW_OFFLINE_STAMP = File.join BREW_OFFLINE_CONFIG, "stamp"
-BREW_OFFLINE_CACHE = File.join BREW_OFFLINE_CONFIG, "cache"
-BREW_OFFLINE_BASEURL = File.join BREW_OFFLINE_CONFIG, "baseurl"
-BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_CONFIG, "urlmap.json"
+BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 
 options = {
   directory: "/Users/william/mnt/nessie/brew-mirror",
   baseurl: "http://localhost:8000",
   sleep: 0.5,
+  config_only: false,
 }
 
 OptionParser.new do |parser|
@@ -50,6 +48,10 @@ OptionParser.new do |parser|
   parser.on "-s", "--sleep SECS", Float, "sleep between each formula download" do |s|
     options[:sleep] = s
   end
+
+  parser.on "-c", "--config-only", "write configuration files but don't perform the mirror" do
+    options[:config_only] = true
+  end
 end.parse!
 
 unless Dir.exist?(options[:directory])
@@ -60,6 +62,8 @@ end
 # and the path of our cache to the directory that brew-offline reads.
 ohai "Writing brew-offline config..."
 
+config = {}
+
 commit = begin
   core_dir = File.join HOMEBREW_LIBRARY, "Taps/homebrew/homebrew-core"
   Dir.chdir core_dir do
@@ -67,12 +71,16 @@ commit = begin
   end
 end
 
-File.write(BREW_OFFLINE_COMMIT, commit)
-File.write(BREW_OFFLINE_STAMP, Time.now.to_i.to_s)
-File.write(BREW_OFFLINE_CACHE, options[:directory])
-File.write(BREW_OFFLINE_BASEURL, options[:baseurl])
+config[:commit] = commit
+config[:stamp] = Time.now.to_i.to_s
+config[:cache] = options[:directory]
+config[:baseurl] = options[:baseurl]
 
-url_map = {}
+File.write(BREW_OFFLINE_CONFIG, config.to_json)
+
+exit if options[:config_only]
+
+urlmap = {}
 
 # Finally, fetch the (stable) resources for each formula in homebrew-core.
 Formula.each do |formula|
@@ -119,6 +127,7 @@ Formula.each do |formula|
     res.downloader.shutup!
     res.downloader.fetch unless res.downloader.cached_location.file?
 
+    # TODO: Avoid the fetch above entirely if new_location exists.
     old_location = res.downloader.cached_location
     new_location = Pathname.new(File.join(options[:directory], "#{res.checksum}#{old_location.extname}"))
 
@@ -130,10 +139,10 @@ Formula.each do |formula|
     end
 
     # Add to the urlmap regardless.
-    url_map[res.url] = new_location.basename
+    urlmap[res.url] = new_location.basename
   end
 
   sleep options[:sleep]
 end
 
-File.write(BREW_OFFLINE_URLMAP, url_map.to_json)
+File.write(BREW_OFFLINE_URLMAP, urlmap.to_json)

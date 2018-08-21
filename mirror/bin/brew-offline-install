@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal true
 
+require "json"
+
 CORE_TAP_DIR = "/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/"
 
 at_exit do
@@ -38,11 +40,10 @@ ENV["HOMEBREW_CURL_PATH"] = File.expand_path "brew-offline-curl"
 # `git fetch` case well. Wiping is probably easier.
 # ENV["HOMEBREW_GIT_PATH"] = File.expand_path "brew-offline-git"
 
-BREW_OFFLINE_CONFIG = File.expand_path "~/.offlinebrew"
-BREW_OFFLINE_COMMIT = File.join BREW_OFFLINE_CONFIG, "commit"
-BREW_OFFLINE_STAMP = File.join BREW_OFFLINE_CONFIG, "stamp"
-BREW_OFFLINE_CACHE = File.join BREW_OFFLINE_CONFIG, "cache"
-BREW_OFFLINE_BASEURL = File.join BREW_OFFLINE_CONFIG, "baseurl"
+BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
+BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+
+config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
 
 # Each of these flags would cause us to attempt to retrieve
 # an asset that we don't mirror, so we catch them early on
@@ -71,8 +72,7 @@ system "brew", "cleanup", "-s", "--prune=0"
 # tree at. This prevents us from attempting to install either earlier or later
 # versions of packages/resources than we have mirrored.
 Dir.chdir CORE_TAP_DIR do
-  commit = File.read BREW_OFFLINE_COMMIT
-  `git checkout #{commit}`
+  `git checkout #{config[:commit]}`
 end
 
 system "brew", "install", *ARGV
