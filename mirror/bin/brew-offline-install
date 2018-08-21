@@ -17,28 +17,31 @@ ENV["HOMEBREW_VERBOSE"] = "1"
 
 # We want to minimize the number of non-package network requests we do,
 # both for performance and stability reasons.
+ENV["HOMEBREW_NO_ANALYTICS"] = "1"
+
 # We also don't want Homebrew changing the versions of packages underneath
 # us without having a chance to update the mirror first.
-ENV["HOMEBREW_NO_ANALYTICS"] = "1"
 ENV["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+
+# Homebrew will try to use GitHub's REST API to minimize (presumably expensive)
+# `git` backend operations. But we don't support GitHub's rest API, so we
+# need to tell Homebrew not to treat GitHub git repositories specially.
+ENV["HOMEBREW_NO_GITHUB_API"] = "1"
 
 # HOMEBREW_BUILD_FROM_SOURCE tells Homebrew to completely ignore bottles.
 # We do this because the mirror currently only contains source packages.
 ENV["HOMEBREW_BUILD_FROM_SOURCE"] = "1"
 
 # HOMEBREW_DEVELOPER tells Homebrew to run in developer mode.
-# We do this so that Homebrew will respect HOMEBREW_CURL_PATH below.
+# We do this so that Homebrew will respect HOMEBREW_CURL_PATH
+# and HOMEBREW_GIT_PATH below.
 ENV["HOMEBREW_DEVELOPER"] = "1"
 
-# HOMEBREW_CURL_PATH and HOMEBRE_GIT_PATH tell Homebrew where to look for
+# HOMEBREW_CURL_PATH and HOMEBREW_GIT_PATH tell Homebrew where to look for
 # `curl` and `git` executables when running in developer mode.
+# In this case, they point to our URL-rewriting shim scripts.
 ENV["HOMEBREW_CURL_PATH"] = File.expand_path "brew-offline-curl"
-
-# TODO: Implement this. It's going to be a tiny bit trickier, since
-# it'll end up shimming every `git` call and not just `clone`.
-# We also need to either wipe the cache with each run or handle the
-# `git fetch` case well. Wiping is probably easier.
-# ENV["HOMEBREW_GIT_PATH"] = File.expand_path "brew-offline-git"
+ENV["HOMEBREW_GIT_PATH"] = File.expand_path "brew-offline-git"
 
 BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
 BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
