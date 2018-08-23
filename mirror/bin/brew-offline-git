@@ -10,7 +10,9 @@ def verbose(msg)
   STDERR.puts "[+] #{msg}" if ENV["HOMEBREW_VERBOSE"]
 end
 
-BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
+# `git` is sometimes called from within a fake $HOME, so we can't just
+# expand ~ or $HOME here. Instead, build it manually.
+BREW_OFFLINE_DIR = File.join "/Users", ENV["USER"], ".offlinebrew"
 BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
 BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 
