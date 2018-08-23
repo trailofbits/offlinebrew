@@ -16,6 +16,10 @@ BREW_OFFLINE_DIR = File.join "/Users", ENV["USER"], ".offlinebrew"
 BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
 BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 
+# We call the "real" `git` below, which is actually Homebrew's own internal
+# `git` shim that tests this variable.
+ENV["HOMEBREW_GIT"] = "git"
+
 begin
   config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
   urlmap = JSON.parse File.read(BREW_OFFLINE_URLMAP)
@@ -35,7 +39,10 @@ end
 # we should never see more than 1 URL at a time anyways.
 # However, it doesn't hurt to be generic.
 urls = ARGV.select { |arg| URI.regexp(%w[http https git]) =~ arg }
-mirror_urls = urls.map { |url| URI.join(config[:baseurl], File.basename(urlmap[url])) }
+
+# NOTE(ww): `git` isn't quite smart enough to poke the .git directory when given a
+# URL to clone, so we need to spoonfeed it.
+mirror_urls = urls.map { |url| URI.join(config[:baseurl], "#{urlmap[url]}/.git/") }
 
 urls.zip(mirror_urls).each do |u, m|
   verbose "#{u} -> #{m}"
