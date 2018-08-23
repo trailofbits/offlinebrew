@@ -45,6 +45,20 @@ def sensible_identifier(strategy, checksum = nil)
   end
 end
 
+# Given a download strategy and an (extant) download location,
+# do any necessary preparation.
+# For now, this just preps `git` repos so that they can be accessed
+# via a dump HTTP mirror.
+def prep_location!(strategy, location)
+  case strategy
+  when GitDownloadStrategy, GitHubGitDownloadStrategy
+    Dir.chdir location do
+      ohai "Repo prep: #{location}"
+      `git update-server-info`
+    end
+  end
+end
+
 options = {
   directory: "/Users/william/mnt/nessie/brew-mirror",
   baseurl: "http://localhost:8000",
@@ -97,6 +111,8 @@ urlmap = {}
 # Finally, fetch the (stable) resources for each formula in homebrew-core.
 Formula.each do |formula|
   # Skip formulae that aren't in the core tap.
+  # TODO(ww): We can probably make a whitelist of other taps to mirror,
+  # and expose it as a configuration or CLI option.
   next unless formula.tap.core_tap?
 
   ohai "Collecting resources for #{formula.name}..."
@@ -155,6 +171,7 @@ Formula.each do |formula|
       ohai "Already migrated!"
     else
       FileUtils.mv res.downloader.cached_location.to_s, new_location.to_s
+      prep_location! res.downloader, new_location.to_s
       ohai "\t#{res.downloader.cached_location} -> #{new_location}"
     end
 
