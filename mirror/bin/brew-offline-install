@@ -44,6 +44,10 @@ ENV["HOMEBREW_CURL_PATH"] = File.expand_path "brew-offline-curl"
 ENV["HOMEBREW_GIT_PATH"] = File.expand_path "brew-offline-git"
 
 BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
+
+# TODO(ww): We should be fetching most of the configuration options from
+# the mirror, and not storing them locally. The only thing we really
+# want (and need) locally is the mirror's address.
 BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
 
 config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
