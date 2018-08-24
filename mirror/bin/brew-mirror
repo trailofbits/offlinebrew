@@ -11,6 +11,11 @@ require "securerandom"
 # We need Homebrew's libraries.
 abort "Make sure to run me via `brew ruby`!" unless Object.const_defined? :Homebrew
 
+# Represents a mirrorable resource.
+# A `fetchable` is anything that responds to `#fetch`.
+# An `identifier` is a unique string that will ultimately identify the resource on the mirror.
+# A `downloader` is also something that responds to `#fetch` and `#cached_location`
+# A `url` is the resource's actual asset.
 MirrorResource = Struct.new(:fetchable, :identifier, :downloader, :url)
 
 # These are the simplest to support, and cover 99.9% of formulae.
@@ -39,6 +44,8 @@ def sensible_identifier(strategy, checksum = nil)
     # Git/GitHub resources don't have checksums and Homebrew doesn't make it easy
     # to retrieve their revision/last commit hash, so we just create a unique
     # identifier for them.
+    # TODO(ww): We should cache or record the UUID we create here, so that we don't
+    # end up mirroring the same revision of a `git` repository multiple times.
     SecureRandom.uuid
   else
     checksum.to_s
