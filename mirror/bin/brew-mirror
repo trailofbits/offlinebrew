@@ -123,6 +123,10 @@ options[:iterator].each do |formula|
   ohai "Collecting resources for #{formula.name}..."
 
   # Build up a list of MirrorResources for the formula.
+  # Every formula has three primary sources of resources:
+  #   1. The top-level SoftwareSpec, in our case always the "stable" spec
+  #   2. The resources (assets, in-tree dependencies) defined under the "stable" spec
+  #   3. The patches for the "stable" spec
   resources = []
 
   resources << MirrorResource.new(formula.stable,
@@ -153,6 +157,8 @@ options[:iterator].each do |formula|
     BREW_OFFLINE_DOWNLOAD_STRATEGIES.include? res.downloader.class
   end
 
+  # TODO(ww): Maybe just log unmirrorable resources, and allow users to attempt to
+  # mirror them manually. I'm not sure yet what that will entail for SVN.
   if bad_resources.any?
     bad_resources.each do |res|
       opoo "#{formula.name} has an unmirrorable resource: #{res.url} (#{res.downloader.class})"
