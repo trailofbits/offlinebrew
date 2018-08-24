@@ -3,8 +3,13 @@
 
 require "json"
 
+# TODO(ww): Grab this from Homebrew's API instead of hardcoding it.
 CORE_TAP_DIR = "/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/"
 
+# On exit, return the core tap's `git` state to whatever it was before.
+# It shouldn't actually hurt us to stay at whatever prior revision
+# we rewind to, but this should keep the number of warnings raised
+# by Homebrew down.
 at_exit do
   Dir.chdir CORE_TAP_DIR do
     `git checkout master`
