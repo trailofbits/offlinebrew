@@ -60,7 +60,7 @@ def prep_location!(strategy, location)
 end
 
 options = {
-  directory: "/Users/william/mnt/nessie/brew-mirror",
+  directory: "/Users/william/tmp/brew-mirror",
   baseurl: "http://localhost:8000",
   sleep: 0.5,
   config_only: false,
@@ -176,10 +176,7 @@ options[:iterator].each do |formula|
     if new_location.exist?
       ohai "\tAlready migrated!"
     else
-      # NOTE: I've been using `sshfs` to mount my output directory,
-      # which causes copying relative links in some resources (namely `git` repos)
-      # to fail spectacularly. `rsync`'s archive mode circumvents this.
-      system "rsync", "-az", old_location.to_s, new_location.to_s
+      FileUtils.mv old_location.to_s, new_location.to_s, force: true
       prep_location! res.downloader, new_location.to_s
       ohai "\t#{old_location} -> #{new_location}"
     end
