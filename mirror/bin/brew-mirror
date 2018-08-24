@@ -53,7 +53,7 @@ def prep_location!(strategy, location)
   case strategy
   when GitDownloadStrategy, GitHubGitDownloadStrategy
     Dir.chdir location do
-      ohai "Repo prep: #{location}"
+      ohai "\t\tRepo prep: #{location}"
       `git update-server-info`
     end
   end
@@ -64,6 +64,7 @@ options = {
   baseurl: "http://localhost:8000",
   sleep: 0.5,
   config_only: false,
+  iterator: Formula,
 }
 
 OptionParser.new do |parser|
@@ -79,6 +80,10 @@ OptionParser.new do |parser|
 
   parser.on "-c", "--config-only", "write configuration files but don't perform the mirror" do
     options[:config_only] = true
+  end
+
+  parser.on "-f", "--formulae f1,f2,f2", Array, "mirror just the given formulae" do |formulae|
+    options[:iterator] = formulae.map { |f| Formula[f] }
   end
 end.parse!
 
@@ -109,7 +114,7 @@ exit if options[:config_only]
 urlmap = {}
 
 # Finally, fetch the (stable) resources for each formula in homebrew-core.
-Formula.each do |formula|
+options[:iterator].each do |formula|
   # Skip formulae that aren't in the core tap.
   # TODO(ww): We can probably make a whitelist of other taps to mirror,
   # and expose it as a configuration or CLI option.
@@ -160,6 +165,7 @@ Formula.each do |formula|
   resources.each do |res|
     # We'll do the logging here.
     res.downloader.shutup!
+    ohai "\tResource url: #{res.url}"
 
     old_location = res.downloader.cached_location
     new_location = Pathname.new(File.join(options[:directory],
@@ -168,11 +174,14 @@ Formula.each do |formula|
     res.downloader.fetch unless new_location.exist?
 
     if new_location.exist?
-      ohai "Already migrated!"
+      ohai "\tAlready migrated!"
     else
-      FileUtils.mv res.downloader.cached_location.to_s, new_location.to_s
+      # NOTE: I've been using `sshfs` to mount my output directory,
+      # which causes copying relative links in some resources (namely `git` repos)
+      # to fail spectacularly. `rsync`'s archive mode circumvents this.
+      system "rsync", "-az", old_location.to_s, new_location.to_s
       prep_location! res.downloader, new_location.to_s
-      ohai "\t#{res.downloader.cached_location} -> #{new_location}"
+      ohai "\t#{old_location} -> #{new_location}"
     end
 
     # Add to the urlmap regardless.
