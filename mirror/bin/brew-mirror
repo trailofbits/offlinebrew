@@ -96,7 +96,7 @@ end.parse!
 
 abort "Fatal: the output directory must exist" unless Dir.exist?(options[:directory])
 
-# Dump the homebrew-core commit we're dumping at, the timestamp,
+# Dump the homebrew-core commit we're mirroring at, the timestamp,
 # and the path of our cache to the directory that brew-offline reads.
 ohai "Writing brew-offline config..."
 
