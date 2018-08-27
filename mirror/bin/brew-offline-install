@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "net/http"
 
 # TODO(ww): Grab this from Homebrew's API instead of hardcoding it.
 CORE_TAP_DIR = "/usr/local/Homebrew/Library/Taps/homebrew/homebrew-core/"
@@ -53,9 +54,27 @@ BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
 # TODO(ww): We should be fetching most of the configuration options from
 # the mirror, and not storing them locally. The only thing we really
 # want (and need) locally is the mirror's address.
-BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+BREW_OFFLINE_LOCAL_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
+BREW_OFFLINE_LOCAL_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 
-config = JSON.parse File.read(BREW_OFFLINE_CONFIG), symbolize_names: true
+config = JSON.parse File.read(BREW_OFFLINE_LOCAL_CONFIG), symbolize_names: true
+
+abort "Missing configuration key: baseurl" unless config[:baseurl]
+
+BREW_OFFLINE_REMOTE_CONFIG = URI.join config[:baseurl], "config.json"
+BREW_OFFLINE_REMOTE_URLMAP = URI.join config[:baseurl], "urlmap.json"
+
+# Clobber our config, and write the remote config/urlmap to disk
+# locally for the `curl` and `git` shims to read.
+begin
+  config = JSON.parse Net::HTTP.get(BREW_OFFLINE_REMOTE_CONFIG)
+  urlmap = JSON.parse Net::HTTP.get(BREW_OFFLINE_REMOTE_URLMAP)
+rescue StandardError => e
+  abort "#{e}: #{e.message} while fetching remote config and urlmap!"
+end
+
+File.write BREW_OFFLINE_LOCAL_CONFIG, config.to_json
+File.write BREW_OFFLINE_LOCAL_URLMAP, urlmap.to_json
 
 # Each of these flags would cause us to attempt to retrieve
 # an asset that we don't mirror, so we catch them early on
@@ -68,7 +87,7 @@ INVALID_FLAGS = %w[
 
 invalid_flags = ARGV & INVALID_FLAGS
 
-odie "One or more invalid flags passed: #{invalid_flags.join(", ")}" if invalid_flags.any?
+abort "One or more invalid flags passed: #{invalid_flags.join(", ")}" if invalid_flags.any?
 
 # This shouldn't be necessary thanks to HOMEBREW_BUILD_FROM_SOURCE, but putting
 # in the ARGV may help us trace where things go wrong.
