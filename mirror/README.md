@@ -7,7 +7,24 @@ a Homebrew installation.
 
 `brew-mirror` performs a mirror of all (supported) Homebrew source packages.
 
-It takes a few different options and isn't finished yet; read the source code.
+The simplest way to run `brew-mirror` is to feed it an output directory:
+
+```bash
+$ mkdir /tmp/brew-mirror
+$ brew ruby ./bin/brew-mirror -d /tmp/brew-mirror
+```
+
+A complete source tree mirror requires about 40GB of space and takes about 8 hours;
+it's not currently resumeable, so you should try to avoid canceling it.
+
+Once complete, running the mirror is as simple as serving the mirror directory over HTTP:
+
+```bash
+$ cd /tmp/brew-mirror
+$ pythom -m SimpleHTTPServer
+```
+
+`brew-mirror` makes fixups to the `git` repositories that it fetches to make this possible.
 
 ### `brew-offline-install`
 
