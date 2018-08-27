@@ -30,13 +30,6 @@ BREW_OFFLINE_DOWNLOAD_STRATEGIES = [
   GitHubGitDownloadStrategy,
 ].freeze
 
-BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
-
-Dir.mkdir BREW_OFFLINE_DIR unless Dir.exist?(BREW_OFFLINE_DIR)
-
-BREW_OFFLINE_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
-BREW_OFFLINE_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
-
 # Given a download strategy, produce a sensible and probably unique identifier.
 def sensible_identifier(strategy, checksum = nil)
   case strategy
