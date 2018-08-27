@@ -114,7 +114,7 @@ config[:stamp] = Time.now.to_i.to_s
 config[:cache] = options[:directory]
 config[:baseurl] = options[:baseurl]
 
-File.write(BREW_OFFLINE_CONFIG, config.to_json)
+File.write File.join(options[:directory], "config.json"), config.to_json
 
 exit if options[:config_only]
 
@@ -201,4 +201,4 @@ options[:iterator].each do |formula|
   sleep options[:sleep]
 end
 
-File.write(BREW_OFFLINE_URLMAP, urlmap.to_json)
+File.write File.join(options[:directory], "urlmap.json"), urlmap.to_json
