@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+# brew-mirror-prune: given a Homebrew mirror, read the URL map
+# and prune any unreferenced files/repositories
+
+require "optparse"
+require "json"
+require "fileutils"
+
+# Files that don't appear in the urlmap that should definitely not be nuked.
+# Note . and .. here: Dir.entries returns them, and nuking them would be very bad.
+WHITELIST = %w[
+  .
+  ..
+  config.json
+  urlmap.json
+].freeze
+
+options = {
+  directory: "/Users/william/tmp/brew-mirror",
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: ruby brew-mirror-prune [options]"
+
+  parser.on "-d", "--directory DIRECTORY" do |d|
+    options[:directory] = d
+  end
+end.parse!
+
+abort "Fatal: mirror directory doesn't exist?" unless Dir.exist?(options[:directory])
+
+Dir.chdir options[:directory] do |cwd|
+  urlmap = JSON.parse File.read("urlmap.json")
+
+  orphans = Dir.entries(cwd) - urlmap.values - WHITELIST
+
+  STDERR.puts "[+] Found #{orphans.size} orphaned resources, removing..."
+
+  orphans.each do |o|
+    STDERR.puts "[+] #{o}"
+    FileUtils.rm_rf o
+  end
+end
