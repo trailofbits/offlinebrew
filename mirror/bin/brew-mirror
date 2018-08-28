@@ -54,6 +54,7 @@ def prep_location!(strategy, location)
   when GitDownloadStrategy, GitHubGitDownloadStrategy
     Dir.chdir location do
       ohai "\t\tRepo prep: #{location}"
+      `git fetch --quiet --unshallow`
       `git update-server-info`
     end
   end
