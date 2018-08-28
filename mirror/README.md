@@ -26,6 +26,20 @@ $ pythom -m SimpleHTTPServer
 
 `brew-mirror` makes fixups to the `git` repositories that it fetches to make this possible.
 
+### `brew-mirror-prune`
+
+`brew-mirror-prune` is an *optional* script for managing the size of the mirror. It'll remove
+any files or directories (i.e., `git` repositories) that aren't currently being advertised
+as available by the mirror.
+
+This is mostly useful for removing the occasional duplicate of large `git` repositories.
+
+You should pass it the same directory as `brew-mirror`:
+
+```bash
+$ brew-mirror-prune -d /tmp/brew-mirror
+```
+
 ### `brew-offline-install`
 
 `brew-offline-install` takes the name of a formula to install from the local mirror.
