@@ -48,7 +48,7 @@ end
 # Given a download strategy and an (extant) download location,
 # do any necessary preparation.
 # For now, this just preps `git` repos so that they can be accessed
-# via a dump HTTP mirror.
+# via a dumb HTTP mirror.
 def prep_location!(strategy, location)
   case strategy
   when GitDownloadStrategy, GitHubGitDownloadStrategy
