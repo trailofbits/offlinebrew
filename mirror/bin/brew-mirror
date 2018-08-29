@@ -54,7 +54,10 @@ def prep_location!(strategy, location)
   when GitDownloadStrategy, GitHubGitDownloadStrategy
     Dir.chdir location do
       ohai "\t\tRepo prep: #{location}"
-      `git fetch --quiet --unshallow`
+      if `git rev-parse --is-shallow-repository`.chomp == "true"
+        ohai "\t\tFound what looks like a shallow repo, unshallowing it..."
+        `git fetch --quiet --unshallow`
+      end
       `git update-server-info`
     end
   end
