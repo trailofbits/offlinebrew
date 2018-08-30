@@ -14,8 +14,8 @@ $ mkdir /tmp/brew-mirror
 $ brew ruby ./bin/brew-mirror -d /tmp/brew-mirror
 ```
 
-A complete source tree mirror requires about 40GB of space and takes about 8 hours;
-it's not currently resumeable, so you should try to avoid canceling it.
+A complete source tree mirror requires about 60GB of space and takes about 8 hours.
+You can cancel and resume it, although `git` repositories are always re-fetched and re-prepped.
 
 Once complete, running the mirror is as simple as serving the mirror directory over HTTP:
 
