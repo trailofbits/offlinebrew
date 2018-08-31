@@ -46,8 +46,8 @@ ENV["HOMEBREW_DEVELOPER"] = "1"
 # HOMEBREW_CURL_PATH and HOMEBREW_GIT_PATH tell Homebrew where to look for
 # `curl` and `git` executables when running in developer mode.
 # In this case, they point to our URL-rewriting shim scripts.
-ENV["HOMEBREW_CURL_PATH"] = File.expand_path "brew-offline-curl"
-ENV["HOMEBREW_GIT_PATH"] = File.expand_path "brew-offline-git"
+ENV["HOMEBREW_CURL_PATH"] = "brew-offline-curl"
+ENV["HOMEBREW_GIT_PATH"] = "brew-offline-git"
 
 BREW_OFFLINE_DIR = File.expand_path "~/.offlinebrew"
 
@@ -58,17 +58,21 @@ BREW_OFFLINE_LOCAL_CONFIG = File.join BREW_OFFLINE_DIR, "config.json"
 BREW_OFFLINE_LOCAL_URLMAP = File.join BREW_OFFLINE_DIR, "urlmap.json"
 
 config = JSON.parse File.read(BREW_OFFLINE_LOCAL_CONFIG), symbolize_names: true
+baseurl = config[:baseurl]
 
-abort "Missing configuration key: baseurl" unless config[:baseurl]
+abort "Missing configuration key: baseurl" unless baseurl
 
-BREW_OFFLINE_REMOTE_CONFIG = URI.join config[:baseurl], "config.json"
-BREW_OFFLINE_REMOTE_URLMAP = URI.join config[:baseurl], "urlmap.json"
+BREW_OFFLINE_REMOTE_CONFIG = URI.join baseurl, "config.json"
+BREW_OFFLINE_REMOTE_URLMAP = URI.join baseurl, "urlmap.json"
 
 # Clobber our config, and write the remote config/urlmap to disk
 # locally for the `curl` and `git` shims to read.
 begin
   config = JSON.parse Net::HTTP.get(BREW_OFFLINE_REMOTE_CONFIG)
   urlmap = JSON.parse Net::HTTP.get(BREW_OFFLINE_REMOTE_URLMAP)
+
+  # The remote config doesn't get to clobber our baseurl.
+  config[:baseurl] = baseurl
 rescue StandardError => e
   abort "#{e}: #{e.message} while fetching remote config and urlmap!"
 end

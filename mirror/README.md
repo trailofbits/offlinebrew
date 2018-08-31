@@ -53,7 +53,7 @@ that will circumvent the mirror (e.g., asking for a `HEAD` or non-stable spec).
 (i.e., HTTP(S)) requests. It rewrites the requested URL internally and feeds the rewritten URL to
 the real `curl`.
 
-You shouldn't (need to) call it directly.
+You shouldn't (need to) call it directly, but it *does* need to go into your `$PATH`.
 
 ### `brew-offline-git`
 
@@ -61,7 +61,7 @@ You shouldn't (need to) call it directly.
 (i.e. `git clone`) requests. Like `brew-offline-curl`, it rewrites the requested URL
 internally and feeds the rewritten URL to the real `git`.
 
-You shouldn't (need to) call it directly.
+You shouldn't (need to) call it directly, but it *does* need to go into your `$PATH`.
 
 ## Configuration
 
