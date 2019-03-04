@@ -14,6 +14,6 @@ circumvents this requirement.
 The [cache_based/](cache_based/) directory contains an initial approach, based on
 spoofing `HOMEBREW_CACHE`.
 
-The [mirror/](mirror/) directory will contains a more complete approach, based on
+The [mirror/](mirror/) directory will contain a more complete approach, based on
 URL rewriting (enabling redirection to a local host).
 
